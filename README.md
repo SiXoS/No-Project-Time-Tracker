@@ -52,7 +52,7 @@ cargo install --path .
 
 ### Configuration
 The default location for the SQlite DB is `~/.nptt-db`. You can change the folder
-with the enironment variable `STT_DB_LOCATION`.
+with the environment variable `STT_DB_LOCATION`.
 
 ## Features
 
@@ -60,8 +60,8 @@ with the enironment variable `STT_DB_LOCATION`.
 - Multiple time entries per day.
 - Break time so you don't have to register one entry before lunch and one after.
 - Smart time reporting designed to be placed in ~/.bashrc so you don't forget to record time.
-- Adding arbitrary flex not connect to a specific time. Useful for when you
-get extra flex sometime or to register initial flex before you start using this tool.
+- Adding arbitrary flex not connected to a specific time. Useful for when you
+get extra flex or to register initial flex before you start using this tool.
 - Generating CSV reports that work well with for example google sheets.
 
 ### Critical lacking features
@@ -76,4 +76,4 @@ you really need to change something.
 - 12 hour format (AM/PM)
 
 ## Known bugs
-Right now I'm not aware of any bugs, that means none exists, right? 
+Right now I'm not aware of any bugs, that means none exist, right? 
