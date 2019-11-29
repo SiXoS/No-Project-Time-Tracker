@@ -230,6 +230,7 @@ fn smart_add_date(date: NaiveDate, default_start: Option<&str>, default_end: Opt
                  Local.ymd(date.year(), date.month(), date.day()).and_hms(end_h, end_m, 0),
                  break_minutes, connection)
     } else {
+        println!("Alright, I'll ask again:");
         smart_add_date(date, default_start, default_end, default_break, connection)
     }
 }
