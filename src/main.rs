@@ -217,9 +217,14 @@ fn smart_add(default_start: Option<&str>, default_end: Option<&str>, default_bre
     }
 }
 
-fn smart_add_date(date: NaiveDate, default_start: Option<&str>, default_end: Option<&str>, default_break: Option<&str>, connection: &DbConnection) -> Result<Vec<String>, String> {
+fn smart_add_date(date: NaiveDate, default_start: Option<&str>, default_end: Option<&str>, default_break: Option<&str>, connection: &DbConnection) -> Result<(), String> {
     println!("Adding time for {}:", date.format("%A %e %B %Y"));
-    let (start_h, start_m) = parsers::force_parse_time(ask_with_optional_default("When did you start?", default_start, validators::time_validator));
+    let start = ask_with_optional_default("When did you start? Or type 'skip' to skip this day altogether.", default_start, |value| if value == "skip" {Ok(())} else { validators::time_validator(value) });
+    if start == "skip" {
+        println!("Ok, skipping.");
+        return Ok(());
+    }
+    let (start_h, start_m) = parsers::force_parse_time(start);
     let (end_h, end_m) = parsers::force_parse_time(ask_with_optional_default("When did you go home?", default_end, validators::time_validator));
     let break_minutes = parsers::force_parse_integer(Some(ask_with_optional_default("How much breaks, in minutes, did you take?", default_break, validators::signed_minute_validator).as_str()));
     let flex = ((end_h * 60 + end_m) as i32 - (start_h * 60 + start_m) as i32 - break_minutes) - 8 * 60;
@@ -228,7 +233,7 @@ fn smart_add_date(date: NaiveDate, default_start: Option<&str>, default_end: Opt
     if accepted == "y" || accepted == "Y" {
         add_line(Local.ymd(date.year(), date.month(), date.day()).and_hms(start_h, start_m, 0),
                  Local.ymd(date.year(), date.month(), date.day()).and_hms(end_h, end_m, 0),
-                 break_minutes, connection)
+                 break_minutes, connection).map(|_| ())
     } else {
         println!("Alright, I'll ask again:");
         smart_add_date(date, default_start, default_end, default_break, connection)
