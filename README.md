@@ -17,7 +17,7 @@ You can also get help for any of the sub commands.
 No Project Time Tracker 0.1
 Simon Lindhén; Github: SiXoS
 Track your time in a comfortable environment without silly buttons and pictures! Change DB location with environment
-variable STT_DB_LOCATION.
+variable NPTT_DB_LOCATION.
 
 USAGE:
     no-project-time-tracker [SUBCOMMAND]
@@ -52,7 +52,7 @@ cargo install --path .
 
 ### Configuration
 The default location for the SQlite DB is `~/.nptt-db`. You can change the folder
-with the environment variable `STT_DB_LOCATION`.
+with the environment variable `NPTT_DB_LOCATION`.
 
 ## Features
 

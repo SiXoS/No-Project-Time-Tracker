@@ -21,16 +21,16 @@ use dirs::home_dir;
 use std::path::{ Path, PathBuf };
 use std::fs;
 
-const DB_LOCATION_ENV: &str = "STT_DB_LOCATION";
+const DB_LOCATION_ENV: &str = "NPTT_DB_LOCATION";
 
 fn main() {
     let mut location = match env::var(DB_LOCATION_ENV) {
         Err(env::VarError::NotPresent) => None,
         Ok(location) => if location.is_empty() { None } else { Some(PathBuf::from(location)) },
         err => panic!(err.unwrap_err())
-    }.unwrap_or(home_dir().expect("No DB location set with environment variable STT_DB_LOCATION and no home directory found."));
+    }.unwrap_or(home_dir().expect("No DB location set with environment variable NPTT_DB_LOCATION and no home directory found."));
     if !location.exists() {
-        fs::create_dir_all(&location).expect(format!("Could not create DB directory ({}). Create the folder with correct permissions or set STT_DB_LOCATION to a different location.", location.as_path().to_str().unwrap()).as_str());
+        fs::create_dir_all(&location).expect(format!("Could not create DB directory ({}). Create the folder with correct permissions or set NPTT_DB_LOCATION to a different location.", location.as_path().to_str().unwrap()).as_str());
     }
     location.push(".nptt-db");
     let connection = init(location).expect("Could not connect to db.");
@@ -50,7 +50,7 @@ fn get_app<'a, 'b>() -> App<'a, 'b> {
     App::new("No Project Time Tracker")
         .version("0.1")
         .author("Simon Lindhén; Github: SiXoS")
-        .about("Track your time in a comfortable environment without silly buttons and pictures! Change DB location with environment variable STT_DB_LOCATION.")
+        .about("Track your time in a comfortable environment without silly buttons and pictures! Change DB location with environment variable NPTT_DB_LOCATION.")
         .setting(AppSettings::ArgRequiredElseHelp)
         .subcommand(SubCommand::with_name("add-time")
             .about("Add a new line in time tracking.")
