@@ -48,7 +48,7 @@ fn main() {
 
 fn get_app<'a, 'b>() -> App<'a, 'b> {
     App::new("No Project Time Tracker")
-        .version("0.1.0")
+        .version("0.1")
         .author("Simon Lindhén; Github: SiXoS")
         .about("Track your time in a comfortable environment without silly buttons and pictures! Change DB location with environment variable STT_DB_LOCATION.")
         .setting(AppSettings::ArgRequiredElseHelp)

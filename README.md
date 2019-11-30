@@ -63,11 +63,11 @@ with the environment variable `STT_DB_LOCATION`.
 - Adding arbitrary flex not connected to a specific time. Useful for when you
 get extra flex or to register initial flex before you start using this tool.
 - Generating CSV reports that work well with for example google sheets.
+- Reporting anytime on weekends will give you that time as flex.
+- Days not reported time on will not affect the flex bank. This is due to a lack of PTO support.
 
 ### Critical lacking features
 These features don't exist but they really should and I will probably add them soon.
-- Don't treat weekends like a workday. If you report 4 hours on a saturday this will mean
-that you lose 4 hours of flex because you didn't work 8 hours.
 - Editing. If you make a typo it will stick. You can edit the SQLite DB manually if
 you really need to change something. 
 

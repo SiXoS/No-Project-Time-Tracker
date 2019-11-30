@@ -101,8 +101,8 @@ impl DbConnection {
     }
 
     pub fn calculate_flex_hours(&self) -> Result<f64, Error> {
-        let flex_seconds_from_time: i32 = self.connection.query_row("SELECT IFNULL(SUM(seconds_per_day - 8*60*60),0) FROM \
-            (SELECT SUM(end - start - (breakTimeMinutes*60)) as seconds_per_day FROM time GROUP BY date) flexTime",
+        let flex_seconds_from_time: i32 = self.connection.query_row("SELECT IFNULL(SUM(seconds_per_day - normal_hours*60*60),0) FROM \
+            (SELECT SUM(end - start - (breakTimeMinutes*60)) as seconds_per_day, CASE WHEN strftime('%w',date) IN ('0','6') THEN 0 ELSE 8 END as normal_hours FROM time GROUP BY date) flexTime",
                NO_PARAMS, |row| row.get(0))?;
         let flex_minutes_from_flex: i32 = self.connection.query_row("SELECT IFNULL(SUM(flexMinutes),0) FROM flex", NO_PARAMS, |row| row.get(0))?;
         Ok(flex_seconds_from_time as f64 / 60.0 / 60.0 + flex_minutes_from_flex as f64 / 60.0)
