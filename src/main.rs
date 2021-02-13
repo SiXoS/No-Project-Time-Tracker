@@ -151,6 +151,31 @@ fn get_app<'a, 'b>() -> App<'a, 'b> {
                 .takes_value(true)
                 .validator(validators::day_validator)
                 .help("To which day to list rows. Requires -s. Can be one of: 'today', 'yesterday', 'Xd' (X days ago), 'YYYY-MM-dd'")))
+        .subcommand(SubCommand::with_name("add-pto")
+            .about("Add PTO")
+            .arg(Arg::with_name("date")
+                .takes_value(true)
+                .required(true)
+                .index(1)
+                .validator(validators::day_validator)
+                .help("Which date to register the flex time so that it gets in the correct report"))
+            .arg(Arg::with_name("type")
+                .takes_value(true)
+                .required(true)
+                .index(2)
+                .help("What type of PTO. Free text field that can be for example vacation. PTO days will be grouped by this value in the report.")))
+        .subcommand(SubCommand::with_name("list-pto")
+            .about("List PTO. Shows current month by default.")
+            .arg(Arg::with_name("start-day")
+                .short("s")
+                .takes_value(true)
+                .validator(validators::day_validator)
+                .help("From which day to list rows. Requires -e. Can be one of: 'today', 'yesterday', 'Xd' (X days ago), 'YYYY-MM-dd'"))
+            .arg(Arg::with_name("end-day")
+                .short("e")
+                .takes_value(true)
+                .validator(validators::day_validator)
+                .help("To which day to list rows. Requires -s. Can be one of: 'today', 'yesterday', 'Xd' (X days ago), 'YYYY-MM-dd'")))
 }
 
 fn execute_commands(matches: ArgMatches, connection: &DbConnection) -> Result<Vec<String>, String> {
@@ -187,8 +212,30 @@ fn execute_commands(matches: ArgMatches, connection: &DbConnection) -> Result<Ve
         },
         ("smart-add", Some(sub_matches)) => smart_add(sub_matches.value_of("default start"), sub_matches.value_of("default end"),
                                                       sub_matches.value_of("default break time"), &connection),
+        ("add-pto", Some(sub_matches)) => add_pto(parsers::force_parse_date(sub_matches.value_of("date")), sub_matches.value_of("type").unwrap(), &connection),
+        ("list-pto", Some(sub_matches)) => if sub_matches.is_present("start-day") || sub_matches.is_present("end-day") {
+            list_pto(sub_matches.value_of("start-day").map(parsers::get_date_from_string).ok_or("No -s flag specified with -e.")?,
+                      sub_matches.value_of("end-day").map(parsers::get_date_from_string).ok_or("No -e flag specified with -s.")?.succ(),
+                      connection)
+        } else {
+            list_pto(Local::now().with_day(1).unwrap(), plus_one_month(Local::now().with_day(1).unwrap()).date(), connection)
+        },
         (command, _) => panic!("Command '{}' is not implemented", command)
     }
+}
+
+fn add_pto(date: Date<Local>, pto_type: &str, connection: &DbConnection) -> Result<Vec<String>, String> {
+    connection.add_pto(&date, pto_type.to_string()).expect("Could not insert PTO.");
+    Ok(vec![format!("Added PTO with type {} at {}.", pto_type, date.format("%A %e %B %Y"))])
+}
+
+fn list_pto(from: Date<Local>, to: Date<Local>, connection: &DbConnection) -> Result<Vec<String>, String> {
+    let ptos = connection.list_pto(&from, &to).expect("Could not fetch PTO from DB.");
+    let mut lines = Vec::new();
+    for pto in ptos {
+        lines.push(format!("PTO of type {} at {}.", pto.pto_type, pto.date));
+    }
+    return Ok(lines);
 }
 
 fn smart_add(default_start: Option<&str>, default_end: Option<&str>, default_break: Option<&str>, connection: &DbConnection) -> Result<Vec<String>, String> {

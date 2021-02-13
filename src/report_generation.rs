@@ -2,10 +2,12 @@
 use crate::db::db_manager::{ DateLine, FlexLine };
 use chrono::{ DateTime, Local, Date, NaiveDate, Weekday, Datelike };
 use std::collections::btree_map::{ BTreeMap };
+use std::collections::binary_heap::{ BinaryHeap };
 
-pub fn create_csv_report(time_rows: Vec<DateLine>, flex_rows: Vec<FlexLine>, total_flex_hours: f64) -> Vec<String> {
+pub fn create_csv_report(from: &DateTime<Local>, to: &DateTime<Local>, time_rows: Vec<DateLine>, flex_rows: Vec<FlexLine>, total_flex_hours: f64) -> Vec<String> {
     let mut flex_for_period = 0.0;
     let mut lines = Vec::new();
+    let mut workday_set = build_workday_set(from, to);
     let map = build_map_by_date(time_rows);
 
     lines.push("Date,Start,End,Break,Flex (minutes),,,Flex for period (hours),Flex total (hours)".to_string());
@@ -30,6 +32,10 @@ pub fn create_csv_report(time_rows: Vec<DateLine>, flex_rows: Vec<FlexLine>, tot
         i += 1;
     }
     lines
+}
+
+fn build_workday_set(from: &DateTime<Local>, to: &DateTime<Local>) -> BinaryHeap<NaiveDate> {
+    let
 }
 
 fn build_map_by_date(time_rows: Vec<DateLine>) -> BTreeMap<NaiveDate, Vec<DateLine>> {

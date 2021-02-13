@@ -27,6 +27,21 @@ pub struct FlexLine {
     pub comment: String
 }
 
+pub struct PtoTypeLine {
+    pub name: String,
+    pub yearly_days_limit: Option<i32>
+}
+
+pub struct PtoLine {
+    pub date: NaiveDate,
+    pub pto_type: String
+}
+
+pub struct PtoAggregate {
+    pub pto_type: PtoTypeLine,
+    pub pto_lines: Vec<PtoLine>
+}
+
 pub fn create_connection<P: AsRef<Path>>(path: P) -> Result<DbConnection, Error> {
     return Ok(DbConnection{ connection: Connection::open(path)?});
 }
@@ -37,7 +52,7 @@ impl DbConnection {
             id INTEGER PRIMARY KEY,\
             start INTEGER NOT NULL,\
             end INTEGER NOT NULL,\
-            date TEXT NOT NULL,
+            date TEXT NOT NULL,\
             breakTimeMinutes INTEGER NOT NULL\
             )", NO_PARAMS)?;
         self.connection.execute("CREATE TABLE IF NOT EXISTS flex (\
@@ -45,6 +60,16 @@ impl DbConnection {
             flexMinutes INTEGER NOT NULL,\
             date INTEGER NOT NULL,\
             comment TEXT)", NO_PARAMS)?;
+        self.connection.execute("CREATE TABLE IF NOT EXISTS ptoType(\
+            id INTEGER PRIMARY KEY,\
+            name TEXT NOT NULL UNIQUE,\
+            yearlyDaysLimit INTEGER NOT NULL\
+        )", NO_PARAMS)?;
+        self.connection.execute("CREATE TABLE IF NOT EXISTS pto (\
+            id INTEGER PRIMARY KEY,\
+            date TEXT NOT NULL,\
+            type TEXT NOT NULL\
+        )", NO_PARAMS)?;
         self.connection.execute("CREATE TABLE IF NOT EXISTS version (\
             version INTEGER NOT NULL\
         )", NO_PARAMS)?;
@@ -131,34 +156,58 @@ impl DbConnection {
         return Ok(flex_lines);
     }
 
+    pub fn add_pto_type(&self, name: String, yearly_days_limit: Option<i32>) -> Result<(), Error> {
+        let mut statement = self.connection.prepare("INSERT INTO ptoType(name, yearlyDaysLimit) VALUE(?,?)")?;
+        statement.execute(params!(name, yearly_days_limit.unwrap_or(-1)))?;
+        Ok(())
+    }
+
+    pub fn list_pto_type(&self) -> Result<Vec<PtoTypeLine>, Error> {
+        let mut statement = self.connection.prepare("SELECT name, yearlyDaysLimit FROM ptoType")?;
+        let mut rows = statement.query(NO_PARAMS)?;
+        self.fetch_pto_lines_from_rows(rows)
+    }
+
+    fn fetch_pto_lines_from_rows(&self, mut rows: Rows) -> Result<Vec<PtoTypeLine>, Error> {
+        let mut pto_type_lines: Vec<PtoTypeLine> = Vec::new();
+        while let Some(row) = rows.next()? {
+            let yearly_days_limit: i32 = row.get(1)?;
+            pto_type_lines.push(PtoTypeLine {
+                name: row.get(0)?,
+                yearly_days_limit: if yearly_days_limit == -1 {Option::None} else {Option::Some(yearly_days_limit)}
+            })
+        }
+        return Ok(pto_type_lines)
+    }
+
+    pub fn get_pto_by_name(&self, name: String) -> Result<PtoAggregate, Error> {
+        let mut statement = self.connection.prepare("SELECT name, yearlyDaysLimit FROM ptoType WHERE name=?")?;
+        let mut rows = statement.query(params!(name))?;
+        let pto_types = self.fetch_pto_lines_from_rows(rows)?;
+
+        
+    }
+
+    pub fn add_pto(&self, date: &Date<Local>, pto_type: String) -> Result<(), Error> {
+        self.connection.execute("INSERT INTO pto(date, type) VALUES(?,?)", params![date.format("%Y-%m-%d").to_string(), pto_types]).map(|_| ())
+    }
+
+    pub fn list_pto(&self, from: &Date<Local>, to: &Date<Local>) -> Result<Vec<PtoLine>, Error> {
+        let mut statement = self.connection.prepare("SELECT date, type FROM pto WHERE date > ? AND date < ?")?;
+        let mut rows = statement.query(params![from.timestamp(), to.timestamp()])?;
+        let mut pto_lines: Vec<PtoLine> = Vec::new();
+        while let Some(row) = rows.next() {
+            pto_lines.push(PtoLine {
+                date: NaiveDate::parse_from_str(row.get::<usize, String>(0)?.as_str(), "%Y-%m-%d").unwrap(),
+                pto_type: row.get(0)?
+            });
+        }
+        Ok(pto_lines)
+    }
+
     pub fn clear(&self) {
         self.connection.execute("DELETE FROM time", NO_PARAMS).unwrap();
         self.connection.execute("DELETE FROM flex", NO_PARAMS).unwrap();
     }
 
 }
-/*
-trait DbLine {
-    fn human_output(&self) -> String;
-    fn csv_output(&self) -> String;
-}
-
-impl DbLine for DateLine {
-    fn human_output(&self) -> String {
-        let start: DateTime<Local> = DateTime::from(row.start);
-        let end: DateTime<Local> = DateTime::from(row.end);
-        let flex = (end.timestamp() - start.timestamp())/60 - row.break_time_minutes as i64 - 8*60;
-        return format!("from {} to {} with breaks of {} minutes results in {} flex minutes", start, end, row.break_time_minutes, flex)
-    }
-
-    fn csv_output(&self) -> String {
-        let start: DateTime<Local> = DateTime::from(row.start);
-        let end: DateTime<Local> = DateTime::from(row.end);
-        let flex = (end.timestamp() - start.timestamp())/60 - row.break_time_minutes as i64 - 8*60;
-        format!("{},{},{},{}", start, end, row.break_time_minutes, flex)
-    }
-}
-
-impl DbLine for FlexLine {
-    
-}*/

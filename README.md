@@ -70,6 +70,7 @@ get extra flex or to register initial flex before you start using this tool.
 These features don't exist but they really should and I will probably add them soon.
 - Editing. If you make a typo it will stick. You can edit the SQLite DB manually if
 you really need to change something. 
+- Collision detection. You can report times that overlap each other.
 
 ### Lacking features
 - Keeping track of various PTO.
