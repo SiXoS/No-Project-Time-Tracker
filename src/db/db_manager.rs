@@ -27,6 +27,13 @@ pub struct FlexLine {
     pub comment: String
 }
 
+pub struct DailyTimeOverrideLine {
+    pub id: i32,
+    pub start: NaiveDate,
+    pub end: Option<NaiveDate>,
+    pub minutes_of_work: i32
+}
+
 pub fn create_connection<P: AsRef<Path>>(path: P) -> Result<DbConnection, Error> {
     return Ok(DbConnection{ connection: Connection::open(path)?});
 }
@@ -47,6 +54,12 @@ impl DbConnection {
             comment TEXT)", NO_PARAMS)?;
         self.connection.execute("CREATE TABLE IF NOT EXISTS version (\
             version INTEGER NOT NULL\
+        )", NO_PARAMS)?;
+        self.connection.execute("CREATE TABLE IF NOT EXISTS dailyTime (\
+            id INTEGER PRIMARY KEY,\
+            startDate TEXT NOT NULL,\
+            endDate TEXT,\
+            minutesOfWork INTEGER NOT NULL\
         )", NO_PARAMS)?;
         self.init_version()?;
         return Ok(());
@@ -101,8 +114,9 @@ impl DbConnection {
     }
 
     pub fn calculate_flex_hours(&self) -> Result<f64, Error> {
-        let flex_seconds_from_time: i32 = self.connection.query_row("SELECT IFNULL(SUM(seconds_per_day - normal_hours*60*60),0) FROM \
-            (SELECT SUM(end - start - (breakTimeMinutes*60)) as seconds_per_day, CASE WHEN strftime('%w',date) IN ('0','6') THEN 0 ELSE 8 END as normal_hours FROM time GROUP BY date) flexTime",
+        let flex_seconds_from_time: i32 = self.connection.query_row("SELECT IFNULL(SUM(flexTime.seconds_per_day - (CASE WHEN strftime('%w',flexTime.date) IN ('0','6') THEN 0 ELSE IFNULL(dailyTime.minutesOfWork,8*60) END)*60),0) FROM \
+            (SELECT SUM(end - start - (breakTimeMinutes*60)) as seconds_per_day, date FROM time GROUP BY date) flexTime LEFT JOIN \
+            (SELECT minutesOfWork, startDate, endDate FROM dailyTime) dailyTime ON flexTime.date >= dailyTime.startDate AND (dailyTime.endDate IS NULL OR flexTime.date < dailyTime.endDate)",
                NO_PARAMS, |row| row.get(0))?;
         let flex_minutes_from_flex: i32 = self.connection.query_row("SELECT IFNULL(SUM(flexMinutes),0) FROM flex", NO_PARAMS, |row| row.get(0))?;
         Ok(flex_seconds_from_time as f64 / 60.0 / 60.0 + flex_minutes_from_flex as f64 / 60.0)
@@ -131,9 +145,43 @@ impl DbConnection {
         return Ok(flex_lines);
     }
 
+    pub fn add_daily_time_override(&self, start: &Date<Local>, minutes_of_work: i32) -> Result<(), Error> {
+        let mut statement = self.connection.prepare("INSERT INTO dailyTime(startDate, minutesOfWork) VALUES(?,?)")?;
+        statement.execute(params![start.format("%Y-%m-%d").to_string(), minutes_of_work])?;
+        Ok(())
+    }
+
+    pub fn stop_daily_time_override(&self, id: i32, end: &Date<Local>) -> Result<(), Error> {
+        let mut statement = self.connection.prepare("UPDATE dailyTime SET endDate=? WHERE id=?")?;
+        let result = statement.execute(params![end.format("%Y-%m-%d").to_string(), id])?;
+        return if result == 0 {
+            Err(Error::QueryReturnedNoRows)
+        } else {
+            Ok(())
+        }
+    }
+
+    pub fn list_daily_time_overrides(&self) -> Result<Vec<DailyTimeOverrideLine>, Error> {
+        let mut statement = self.connection.prepare("SELECT id, startDate, endDate, minutesOfWork FROM dailyTime")?;
+        let mut rows = statement.query(NO_PARAMS)?;
+        let mut daily_times: Vec<DailyTimeOverrideLine> = Vec::new();
+        while let Some(row) = rows.next()? {
+            let start_date: String = row.get(1)?;
+            let end_date: Option<String> = row.get(2)?;
+            daily_times.push(DailyTimeOverrideLine {
+                id: row.get(0)?,
+                start: NaiveDate::parse_from_str(start_date.as_str(), "%Y-%m-%d").expect("Could not parse date from DB."),
+                end: end_date.map(|date| NaiveDate::parse_from_str(date.as_str(), "%Y-%m-%d").expect("Could not parse date from DB.")),
+                minutes_of_work: row.get(3)?
+            })
+        }
+        Ok(daily_times)
+    }
+
     pub fn clear(&self) {
         self.connection.execute("DELETE FROM time", NO_PARAMS).unwrap();
         self.connection.execute("DELETE FROM flex", NO_PARAMS).unwrap();
+        self.connection.execute("DELETE FROM dailyTime", NO_PARAMS).unwrap();
     }
 
 }

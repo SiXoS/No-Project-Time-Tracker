@@ -1,4 +1,7 @@
 # Change log
+## 0.2.0
+- Add daily time overrides for when you don't work 8 hours per day.
+
 ## 0.1.2
 - Ability to skip days during smart-add.
 

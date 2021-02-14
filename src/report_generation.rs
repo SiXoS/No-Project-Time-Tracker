@@ -1,16 +1,16 @@
 
-use crate::db::db_manager::{ DateLine, FlexLine };
+use crate::db::db_manager::{DateLine, FlexLine, DailyTimeOverrideLine};
 use chrono::{ DateTime, Local, Date, NaiveDate, Weekday, Datelike };
 use std::collections::btree_map::{ BTreeMap };
 
-pub fn create_csv_report(time_rows: Vec<DateLine>, flex_rows: Vec<FlexLine>, total_flex_hours: f64) -> Vec<String> {
+pub fn create_csv_report(time_rows: Vec<DateLine>, flex_rows: Vec<FlexLine>, total_flex_hours: f64, daily_time_overrides: Vec<DailyTimeOverrideLine>) -> Vec<String> {
     let mut flex_for_period = 0.0;
     let mut lines = Vec::new();
     let map = build_map_by_date(time_rows);
 
     lines.push("Date,Start,End,Break,Flex (minutes),,,Flex for period (hours),Flex total (hours)".to_string());
     for (date, date_lines) in map {
-        let flex = calculate_flex(&date, &date_lines);
+        let flex = calculate_flex(&date, &date_lines, &daily_time_overrides);
         flex_for_period += flex as f64 / 60.0;
         let first_line = &date_lines[0];
         lines.push(format!("{},{},{},{},{}", date.format("%Y-%m-%d"), first_line.start.format("%H:%M"), first_line.end.format("%H:%M"), first_line.break_time_minutes, flex));
@@ -59,13 +59,13 @@ fn append_string_line_or_push_new(rows: &mut Vec<String>, index: usize, to_appen
     }
 }
 
-pub fn create_human_friendly_report(time_rows: Vec<DateLine>, flex_rows: Vec<FlexLine>, total_flex_hours: f64, start: DateTime<Local>, end: DateTime<Local>) -> Vec<String> {
+pub fn create_human_friendly_report(time_rows: Vec<DateLine>, flex_rows: Vec<FlexLine>, total_flex_hours: f64, start: DateTime<Local>, end: DateTime<Local>, daily_time_overrides: Vec<DailyTimeOverrideLine>) -> Vec<String> {
     let mut flex_for_period = 0.0;
     let mut lines = Vec::new();
     let map = build_map_by_date(time_rows);
     lines.push(format!("Time entries from {} to {}.", start, end));
     for (date, date_line) in map {
-        let flex = calculate_flex(&date, &date_line);
+        let flex = calculate_flex(&date, &date_line, &daily_time_overrides);
         flex_for_period += flex as f64 / 60.0;
         lines.push(format!("Got {} flex minutes from {}:", flex, date.format("%Y-%m-%d")));
         for date_line in date_line {
@@ -82,15 +82,27 @@ pub fn create_human_friendly_report(time_rows: Vec<DateLine>, flex_rows: Vec<Fle
     lines
 }
 
-fn calculate_flex(date: &NaiveDate, rows_for_date: &Vec<DateLine>) -> i64 {
+fn calculate_flex(date: &NaiveDate, rows_for_date: &Vec<DateLine>, daily_time_overrides: &Vec<DailyTimeOverrideLine>) -> i64 {
     let mut sum_minutes = 0;
     for row in rows_for_date {
         sum_minutes += (row.end.timestamp() - row.start.timestamp()) / 60 - row.break_time_minutes as i64
     }
-    if date.weekday() != Weekday::Sun && date.weekday() != Weekday::Sat {
-        sum_minutes -= 8*60;
-    }
+    sum_minutes -= get_minutes_for_date(daily_time_overrides, date);
     return sum_minutes;
 }
 
+fn get_minutes_for_date(daily_time_overrides: &Vec<DailyTimeOverrideLine>, date: &NaiveDate) -> i64 {
+    return if date.weekday() == Weekday::Sun || date.weekday() == Weekday::Sat {
+        0
+    } else {
+        for override_line in daily_time_overrides {
+            if date.signed_duration_since(override_line.start).num_days() >= 0 {
+                if override_line.end.is_none() || date.signed_duration_since(override_line.end.unwrap()).num_days() < 0 {
+                    return override_line.minutes_of_work as i64;
+                }
+            }
+        }
+        8 * 60
+    }
+}
 

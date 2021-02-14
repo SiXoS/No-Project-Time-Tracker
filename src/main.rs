@@ -72,7 +72,7 @@ fn get_app<'a, 'b>() -> App<'a, 'b> {
             .arg(Arg::with_name("break-time")
                 .short("b")
                 .takes_value(true)
-                .validator(validators::unsigned_minute_validator)
+                .validator(validators::unsigned_number_validator)
                 .help("Minutes of break time you took (lunch mostly).")))
         .subcommand(SubCommand::with_name("smart-add")
             .about("Will allow you to interactively add time for the previous workday(s) that has no time reported. This can be placed in your .bashrc for example. You will then be requested to add the time for unreported days as soon as you open the terminal. Will not do anything if the previous workday has a report.")
@@ -92,7 +92,7 @@ fn get_app<'a, 'b>() -> App<'a, 'b> {
                 .long("break")
                 .short("b")
                 .takes_value(true)
-                .validator(validators::unsigned_minute_validator)
+                .validator(validators::unsigned_number_validator)
                 .help("Default break time in minutes. If this is specified it will be presented as an option during the interactive time report.")))
         .subcommand(SubCommand::with_name("list-time")
             .about("List time tracking lines. Shows current month by default.")
@@ -151,6 +151,32 @@ fn get_app<'a, 'b>() -> App<'a, 'b> {
                 .takes_value(true)
                 .validator(validators::day_validator)
                 .help("To which day to list rows. Requires -s. Can be one of: 'today', 'yesterday', 'Xd' (X days ago), 'YYYY-MM-dd'")))
+        .subcommand(SubCommand::with_name("add-daily-time-override")
+            .about("Add daily time override (if you don't work 8 hours per day). Start date is inclusive.")
+            .arg(Arg::with_name("start-date")
+                .takes_value(true)
+                .required(true)
+                .index(1)
+                .validator(validators::day_validator))
+            .arg(Arg::with_name("daily-minutes")
+                .takes_value(true)
+                .required(true)
+                .index(2)
+                .validator(validators::unsigned_number_validator)))
+        .subcommand(SubCommand::with_name("list-daily-time-override")
+            .about("List all daily time overrides."))
+        .subcommand(SubCommand::with_name("stop-daily-time-override")
+            .about("Set an end date for a daily time override. End date is exclusive")
+            .arg(Arg::with_name("id")
+                .takes_value(true)
+                .required(true)
+                .index(1)
+                .validator(validators::unsigned_number_validator))
+            .arg(Arg::with_name("end-date")
+                .takes_value(true)
+                .required(true)
+                .index(2)
+                .validator(validators::day_validator)))
 }
 
 fn execute_commands(matches: ArgMatches, connection: &DbConnection) -> Result<Vec<String>, String> {
@@ -187,6 +213,11 @@ fn execute_commands(matches: ArgMatches, connection: &DbConnection) -> Result<Ve
         },
         ("smart-add", Some(sub_matches)) => smart_add(sub_matches.value_of("default start"), sub_matches.value_of("default end"),
                                                       sub_matches.value_of("default break time"), &connection),
+        ("add-daily-time-override", Some(sub_matches)) => add_daily_time_override(parsers::force_parse_date(sub_matches.value_of("start-date")),
+                                                    parsers::force_parse_integer(sub_matches.value_of("daily-minutes")), &connection),
+        ("list-daily-time-override", _) => list_daily_time_override(&connection),
+        ("stop-daily-time-override", Some(sub_matches)) => stop_daily_time_override(parsers::force_parse_integer(sub_matches.value_of("id")),
+                                                                                    parsers::force_parse_date(sub_matches.value_of("end-date")), &connection),
         (command, _) => panic!("Command '{}' is not implemented", command)
     }
 }
@@ -306,10 +337,12 @@ fn report(start: DateTime<Local>, end: DateTime<Local>, csv: bool, connection: &
         .expect("Could not calculate flex time.");
     let flex_rows = connection.list_flex(&start, &end)
         .expect("Could not retrieve flex lines.");
+    let daily_time_overrides = connection.list_daily_time_overrides()
+        .expect("Could not retrieve daily time overrides");
     if csv {
-        Ok(create_csv_report(rows, flex_rows, total_flex))
+        Ok(create_csv_report(rows, flex_rows, total_flex, daily_time_overrides))
     } else {
-        Ok(create_human_friendly_report(rows, flex_rows, total_flex, start, end))
+        Ok(create_human_friendly_report(rows, flex_rows, total_flex, start, end, daily_time_overrides))
     }
 }
 
@@ -328,6 +361,33 @@ fn list_flex(start: DateTime<Local>, end: DateTime<Local>, connection: &DbConnec
         lines.push(format!("added {} minutes of flex at {} with comment '{}'", row.flex_minutes, row.date.date(), row.comment));
     }
     Ok(lines)
+}
+
+fn add_daily_time_override(start: Date<Local>, minutes_per_day: i32, connection: &DbConnection) -> Result<Vec<String>, String> {
+    connection.add_daily_time_override(&start, minutes_per_day)
+        .expect("Could not add daily time override");
+    Ok(vec![format!("Inserted daily time override from {} with {} minutes per day.", start.format("%Y-%m-%d"), minutes_per_day)])
+}
+
+fn list_daily_time_override(connection: &DbConnection) -> Result<Vec<String>, String> {
+    let lines = connection.list_daily_time_overrides().map_err(|err| format!("Could not list time overrides: {}", err.to_string()))?;
+    let mut result: Vec<String> = Vec::new();
+    for line in lines {
+        result.push(format!("Daily time override with id {} starting at {} inclusive and ending at {} exclusive of {} minutes.",
+                            line.id,
+                            line.start.format("%Y-%m-%d"),
+                            line.end.map(|date| date.format("%Y-%m-%d").to_string()).unwrap_or("never".to_string()),
+                            line.minutes_of_work))
+    }
+    Ok(result)
+}
+
+fn stop_daily_time_override(id: i32, end: Date<Local>, connection: &DbConnection) -> Result<Vec<String>, String> {
+    connection.stop_daily_time_override(id, &end).map_err(|err| match err {
+        Error::QueryReturnedNoRows => "Update matched no rows, did you specify the correct id?".to_string(),
+        _ => format!("Could not update daily time override: {}", err)
+    })?;
+    Ok(vec![format!("Set end date for daily time override with id {} to {}.", id, end.format("%Y-%m-%d"))])
 }
 
 fn init<P: AsRef<Path>>(path: P) -> Result<DbConnection, Error> {

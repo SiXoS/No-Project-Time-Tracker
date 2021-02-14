@@ -13,7 +13,7 @@ pub mod validators {
         };
     }
 
-    pub fn unsigned_minute_validator(to_check: String) -> Result<(), String> {
+    pub fn unsigned_number_validator(to_check: String) -> Result<(), String> {
         let regex = Regex::new("^([0-9]+)$").expect("Invalid regex");
         return if regex.is_match(to_check.as_str()) {
             Ok(())

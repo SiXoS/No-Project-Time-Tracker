@@ -65,6 +65,7 @@ get extra flex or to register initial flex before you start using this tool.
 - Generating CSV reports that work well with for example google sheets.
 - Reporting anytime on weekends will give you that time as flex.
 - Days not reported time on will not affect the flex bank. This is due to a lack of PTO support.
+- Ability to change working hours. Default is 8 per weekday. See `add-daily-time-override`.
 
 ### Critical lacking features
 These features don't exist but they really should and I will probably add them soon.
@@ -74,6 +75,8 @@ you really need to change something.
 ### Lacking features
 - Keeping track of various PTO.
 - 12 hour format (AM/PM)
+- Specifying time in anything other than minutes
 
 ## Known bugs
-Right now I'm not aware of any bugs, that means none exist, right? 
+- Generating a report on a timespan does not affect the total flex in the report.
+It will always be the amount of flex you have when generating the report.

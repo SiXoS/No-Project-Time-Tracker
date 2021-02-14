@@ -32,18 +32,18 @@ fn test_day_date(){
 
 #[test]
 fn test_parse_brake_time(){
-    assert_eq!(validators::unsigned_minute_validator("59".to_string()).is_ok(), true);
+    assert_eq!(validators::unsigned_number_validator("59".to_string()).is_ok(), true);
     assert_eq!(parsers::force_parse_integer(Some("59")), 59);
-    assert_eq!(validators::unsigned_minute_validator("0".to_string()).is_ok(), true);
+    assert_eq!(validators::unsigned_number_validator("0".to_string()).is_ok(), true);
     assert_eq!(parsers::force_parse_integer(Some("0")), 0);
-    assert_eq!(validators::unsigned_minute_validator("5000".to_string()).is_ok(), true);
+    assert_eq!(validators::unsigned_number_validator("5000".to_string()).is_ok(), true);
     assert_eq!(parsers::force_parse_integer(Some("5000")), 5000);
 }
 
 #[test]
 fn test_bad_brake_time(){
-    assert_eq!(validators::unsigned_minute_validator("10d".to_string()).is_ok(), false);
-    assert_eq!(validators::unsigned_minute_validator("-1".to_string()).is_ok(), false);
+    assert_eq!(validators::unsigned_number_validator("10d".to_string()).is_ok(), false);
+    assert_eq!(validators::unsigned_number_validator("-1".to_string()).is_ok(), false);
 }
 
 #[test]
