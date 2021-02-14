@@ -47,14 +47,6 @@ fn test_bad_brake_time(){
 }
 
 #[test]
-fn test_fallback_date() {
-    assert_eq!(parsers::force_parse_datetime_fallback(Some("10:11"), Some("2019-11-10"), Some("2019-11-12")),
-               Local.ymd(2019, 11, 10).and_hms(10, 11, 0));
-    assert_eq!(parsers::force_parse_datetime_fallback(Some("10:11"), None, Some("2019-11-12")),
-               Local.ymd(2019, 11, 12).and_hms(10, 11, 0));
-}
-
-#[test]
 fn test_date() {
     assert_eq!(parsers::force_parse_datetime(Some("10:11"), Some("2019-11-10")),
                Local.ymd(2019, 11, 10).and_hms(10, 11, 0));

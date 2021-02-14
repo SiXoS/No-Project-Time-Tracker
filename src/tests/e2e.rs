@@ -63,12 +63,12 @@ fn test_add_and_list_flex(connection: &DbConnection) {
 fn test_combination_of_stuff(connection: &DbConnection) {
     sleep(Duration::from_secs(1));
     sleep(Duration::from_secs(1));
-    execute_commands(get_app().get_matches_from(vec!["cli-tt", "add-time", "08:00", "17:00", "2019-11-10", "-b60"]), connection).unwrap(); // +0
-    execute_commands(get_app().get_matches_from(vec!["cli-tt", "add-time", "08:30", "17:00", "2019-11-11", "-b60"]), connection).unwrap(); // -30 p
-    execute_commands(get_app().get_matches_from(vec!["cli-tt", "add-time", "08:00", "17:00", "2019-11-12", "-b90"]), connection).unwrap(); // -30 p
-    execute_commands(get_app().get_matches_from(vec!["cli-tt", "add-flex", "120", "2019-11-10"]), connection).unwrap(); // +120
-    execute_commands(get_app().get_matches_from(vec!["cli-tt", "add-flex", "120", "2019-11-11"]), connection).unwrap(); // +120 p
-    let lines = execute_commands(get_app().get_matches_from(vec!["cli-tt", "report", "-s2019-11-11", "-e2019-11-12"]), connection).unwrap();
+    execute_commands(get_app().get_matches_from(vec!["cli-tt", "add-time", "08:00", "17:00", "2019-11-11", "-b60"]), connection).unwrap(); // +0
+    execute_commands(get_app().get_matches_from(vec!["cli-tt", "add-time", "08:30", "17:00", "2019-11-12", "-b60"]), connection).unwrap(); // -30 p
+    execute_commands(get_app().get_matches_from(vec!["cli-tt", "add-time", "08:00", "17:00", "2019-11-13", "-b90"]), connection).unwrap(); // -30 p
+    execute_commands(get_app().get_matches_from(vec!["cli-tt", "add-flex", "120", "2019-11-11"]), connection).unwrap(); // +120
+    execute_commands(get_app().get_matches_from(vec!["cli-tt", "add-flex", "120", "2019-11-12"]), connection).unwrap(); // +120 p
+    let lines = execute_commands(get_app().get_matches_from(vec!["cli-tt", "report", "-s2019-11-12", "-e2019-11-13"]), connection).unwrap();
     for line in &lines {
         println!("{}", line);
     }
