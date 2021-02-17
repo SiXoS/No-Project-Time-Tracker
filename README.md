@@ -14,7 +14,7 @@ your reports are up to date. The tool also supports csv exports.
 ## Root help section
 You can also get help for any of the sub commands.
 ```
-No Project Time Tracker 0.1
+No Project Time Tracker 0.2.1
 Simon Lindhén; Github: SiXoS
 Track your time in a comfortable environment without silly buttons and pictures! Change DB location with environment
 variable NPTT_DB_LOCATION.
@@ -27,17 +27,21 @@ FLAGS:
     -V, --version    Prints version information
 
 SUBCOMMANDS:
-    add-flex     Add additional flex for occasions that don't coincide with normal condition. For example if you get
-                 double flex
-    add-time     Add a new line in time tracking.
-    help         Prints this message or the help of the given subcommand(s)
-    list-flex    List flex lines. Shows current month by default.
-    list-time    List time tracking lines. Shows current month by default.
-    report       Get a time report.
-    smart-add    Will allow you to interactively add time for the previous workday(s) that has no time reported.
-                 This can be placed in your .bashrc for example. You will then be requested to add the time for
-                 unreported days as soon as you open the terminal. Will not do anything if the previous workday has
-                 a report.
+    add-daily-time-override     Add daily time override (if you don't work 8 hours per day). Start date is
+                                inclusive.
+    add-flex                    Add additional flex for occasions that don't coincide with normal condition. For
+                                example if you get double flex
+    add-time                    Add a new line in time tracking.
+    help                        Prints this message or the help of the given subcommand(s)
+    list-daily-time-override    List all daily time overrides.
+    list-flex                   List flex lines. Shows current month by default.
+    list-time                   List time tracking lines. Shows current month by default.
+    report                      Get a time report.
+    smart-add                   Will allow you to interactively add time for the previous workday(s) that has no
+                                time reported. This can be placed in your .bashrc for example. You will then be
+                                requested to add the time for unreported days as soon as you open the terminal. Will
+                                not do anything if the previous workday has a report.
+    stop-daily-time-override    Set an end date for a daily time override. End date is exclusive
 ```
 
 ## Installation

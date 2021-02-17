@@ -48,7 +48,7 @@ fn main() {
 
 fn get_app<'a, 'b>() -> App<'a, 'b> {
     App::new("No Project Time Tracker")
-        .version("0.1")
+        .version("0.2.1")
         .author("Simon Lindhén; Github: SiXoS")
         .about("Track your time in a comfortable environment without silly buttons and pictures! Change DB location with environment variable NPTT_DB_LOCATION.")
         .setting(AppSettings::ArgRequiredElseHelp)
@@ -258,11 +258,16 @@ fn smart_add_date(date: NaiveDate, default_start: Option<&str>, default_end: Opt
     let (start_h, start_m) = parsers::force_parse_time(start);
     let (end_h, end_m) = parsers::force_parse_time(ask_with_optional_default("When did you go home?", default_end, validators::time_validator));
     let break_minutes = parsers::force_parse_integer(Some(ask_with_optional_default("How much breaks, in minutes, did you take?", default_break, validators::signed_minute_validator).as_str()));
-    let flex = ((end_h * 60 + end_m) as i32 - (start_h * 60 + start_m) as i32 - break_minutes) - 8 * 60;
+    let start_date = Local.ymd(date.year(), date.month(), date.day()).and_hms(start_h, start_m, 0);
+    let minutes_in_day = connection.get_daily_time_override_for_date(&start_date.date())
+        .expect("Could not fetch daily time override.")
+        .map(|overrid| overrid.minutes_of_work)
+        .unwrap_or(8*60);
+    let flex = ((end_h * 60 + end_m) as i32 - (start_h * 60 + start_m) as i32 - break_minutes) - minutes_in_day;
     let accepted = ask_with_optional_default(format!("Is this correct? {} from {:02}:{:02} to {:02}:{:02} with breaks of {} minutes which results in {} minutes of flex?", date.format("%A %e %B %Y"), start_h, start_m, end_h, end_m, break_minutes, flex).as_str(),
                                              Some("y"), |_| Ok(()));
     if accepted == "y" || accepted == "Y" {
-        add_line(Local.ymd(date.year(), date.month(), date.day()).and_hms(start_h, start_m, 0),
+        add_line(start_date,
                  Local.ymd(date.year(), date.month(), date.day()).and_hms(end_h, end_m, 0),
                  break_minutes, connection).map(|_| ())
     } else {

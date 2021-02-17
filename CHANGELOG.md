@@ -1,4 +1,7 @@
 # Change log
+## 0.2.1
+- Confirmation question in smart-add takes daily time override into consideration
+
 ## 0.2.0
 - Add daily time overrides for when you don't work 8 hours per day.
 

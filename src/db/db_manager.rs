@@ -178,6 +178,25 @@ impl DbConnection {
         Ok(daily_times)
     }
 
+    pub fn get_daily_time_override_for_date(&self, date: &Date<Local>) -> Result<Option<DailyTimeOverrideLine>, Error> {
+        let mut statement = self.connection.prepare("SELECT id, startDate, endDate, minutesOfWork FROM dailyTime WHERE ? >= dailyTime.startDate AND (dailyTime.endDate IS NULL OR ? < dailyTime.endDate)")?;
+        let date_string = date.format("%Y-%m-%d").to_string();
+        let mut rows = statement.query(params![date_string, date_string])?;
+        match rows.next()? {
+            Some(row) => {
+                let start_date: String = row.get(1)?;
+                let end_date: Option<String> = row.get(2)?;
+                Ok(Some(DailyTimeOverrideLine {
+                    id: row.get(0)?,
+                    start: NaiveDate::parse_from_str(start_date.as_str(), "%Y-%m-%d").expect("Could not parse date from DB."),
+                    end: end_date.map(|date| NaiveDate::parse_from_str(date.as_str(), "%Y-%m-%d").expect("Could not parse date from DB.")),
+                    minutes_of_work: row.get(3)?
+                }))
+            }
+            _ => Ok(None)
+        }
+    }
+
     pub fn clear(&self) {
         self.connection.execute("DELETE FROM time", NO_PARAMS).unwrap();
         self.connection.execute("DELETE FROM flex", NO_PARAMS).unwrap();
